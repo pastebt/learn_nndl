@@ -2,6 +2,7 @@ package main
 
 import (
     "os"
+    "fmt"
     "log"
     "math"
     "math/rand"
@@ -90,6 +91,21 @@ func randyx(y, x int) *mat64.Dense {
 }
 
 
+func dot(w, a *mat64.Dense) *mat64.Dense {
+    //fmt.Printf("w = %#v\na = %#v\n", w, a)
+    r, _ := w.Dims()
+    //fmt.Printf("c=%#v\n", c)
+    d := make([]float64, r)
+    v := a.ColView(0)
+    //fmt.Printf("v=%#v\n", v)
+    for i := 0; i < len(d); i++ {
+        d[i] = mat64.Dot(w.RowView(i), v)
+    }
+    //fmt.Printf("d = %#v\n", d)
+    return mat64.NewDense(r, 1, d)
+}
+
+
 type Network struct {
     num_layers int
     sizes   []int
@@ -112,16 +128,50 @@ func NewNetwork(sizes []int) *Network {
 }
 
 
-func (nw *Network)feedforward () {}
+func (nw *Network)feedforward (a *mat64.Dense) *mat64.Dense{
+    for i := 0; i < len(nw.biases); i++ {
+        s := mat64.NewDense(0, 0, nil)
+        s.Add(dot(nw.weights[i], a), nw.biases[i])
+        a = sigmoid(s)
+    }
+    return a
+}
+
+
 func (nw *Network)SGD() {}
 func (nw *Network)update_mini_batch() {}
 func (nw *Network)backprop() {}
 func (nw *Network)evaluate() {}
-func (nw *Network)cost_derivative() {}
+
+func (nw *Network)cost_derivative(output_activations, y *mat64.Dense) *mat64.Dense{
+    m := mat64.NewDense(0, 0, nil)
+    m.Sub(output_activations, y)
+    return m
+}
 
 
-func main() {
+func test() {
+    /*
     load_one("trai_data.txt")
     load_one("vali_data.txt")
     load_one("test_data.txt")
+    */
+    //w := randyx(2, 2)
+    //a := randyx(2, 1)
+    w := mat64.NewDense(3, 2, []float64{1.682852  , -0.03961098,
+                                        0.03793304,  0.42585802,
+                                        0.74246289, -0.03209176})
+    a := mat64.NewDense(2, 1, []float64{-0.1631285,
+                                        -1.73508289})
+    /* np.dot(w, a)
+    array([[-0.20579278],
+           [-0.74508692],
+           [-0.06543499]]) */
+    d := dot(w, a)
+    fmt.Printf("d = %#v\n", d)
+}
+
+
+func main() {
+
 }
