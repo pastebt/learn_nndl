@@ -13,6 +13,12 @@ import (
 )
 
 
+type ITEM struct {
+    x *mat64.Dense
+    y int
+}
+
+
 func load_one(infn string) (err error) {
     fin, err := os.Open(infn)
     if err != nil {
@@ -106,6 +112,22 @@ func dot(w, a *mat64.Dense) *mat64.Dense {
 }
 
 
+func argmax(a *mat64.Dense) int {
+    f := a.At(0, 0)
+    idx := 0
+    r, c := a.Dims()
+    if c != 1 { log.Fatal("argmax, c != 1") }
+    for i := 0; i < r; i++ {
+        t := a.At(i, 0)
+        if t > f {
+            f = t
+            idx = i
+        }
+    }
+    return idx
+}
+
+
 type Network struct {
     num_layers int
     sizes   []int
@@ -129,9 +151,15 @@ func NewNetwork(sizes []int) *Network {
 
 
 func (nw *Network)feedforward (a *mat64.Dense) *mat64.Dense{
+    /*
     for i := 0; i < len(nw.biases); i++ {
         s := mat64.NewDense(0, 0, nil)
         s.Add(dot(nw.weights[i], a), nw.biases[i])
+        a = sigmoid(s)
+    }*/
+    for i, b := range nw.biases {
+        s := mat64.NewDense(0, 0, nil)
+        s.Add(dot(nw.weights[i], a), b)
         a = sigmoid(s)
     }
     return a
@@ -141,7 +169,13 @@ func (nw *Network)feedforward (a *mat64.Dense) *mat64.Dense{
 func (nw *Network)SGD() {}
 func (nw *Network)update_mini_batch() {}
 func (nw *Network)backprop() {}
-func (nw *Network)evaluate() {}
+func (nw *Network)evaluate(test_data []*ITEM) int {
+    eq := 0
+    for _, item := range test_data {
+        if item.y == argmax(nw.feedforward(item.x)) { eq = eq + 1 }
+    }
+    return eq
+}
 
 func (nw *Network)cost_derivative(output_activations, y *mat64.Dense) *mat64.Dense{
     m := mat64.NewDense(0, 0, nil)
