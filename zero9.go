@@ -128,6 +128,15 @@ func argmax(a *mat64.Dense) int {
 }
 
 
+// http://stackoverflow.com/questions/12264789/shuffle-array-in-go
+func shuffle(dat []*ITEM) {
+    for i := range dat {
+        j := rand.Intn(i + 1)
+        dat[i], dat[j] = dat[j], dat[i]
+    }
+}
+
+
 type Network struct {
     num_layers int
     sizes   []int
@@ -165,10 +174,25 @@ func (nw *Network)feedforward (a *mat64.Dense) *mat64.Dense{
     return a
 }
 
+func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
+                      eta int, test_data []*ITEM) {
+    for j := 0; j < epochs; j++ {
+        shuffle(training_data)
+        for k :=0; k < len(training_data); k = k + mini_batch_size {
+            nw.update_mini_batch(training_data[k:k+mini_batch_size], eta)
+        }
+        if test_data != nil {
+            fmt.Printf("Epoch %02d: %d / %d\n",
+                       j, nw.evaluate(test_data), len(test_data))
+        } else {
+            fmt.Printf("Epoch %02d complete", j)
+        }
+    }
+}
 
-func (nw *Network)SGD() {}
-func (nw *Network)update_mini_batch() {}
+func (nw *Network)update_mini_batch(mini_batch []*ITEM, eta int) {}
 func (nw *Network)backprop() {}
+
 func (nw *Network)evaluate(test_data []*ITEM) int {
     eq := 0
     for _, item := range test_data {
