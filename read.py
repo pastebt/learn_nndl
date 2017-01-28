@@ -6,7 +6,7 @@ import gzip
 import numpy as np
 
 def load_data():
-    f = gzip.open('../../github/neural-networks-and-deep-learning/data/mnist.pkl.gz', 'rb')
+    f = gzip.open('../neural-networks-and-deep-learning/data/mnist.pkl.gz', 'rb')
     training_data, validation_data, test_data = cPickle.load(f)
     f.close()
     return (training_data, validation_data, test_data)
