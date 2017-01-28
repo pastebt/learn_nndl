@@ -3,6 +3,7 @@ package main
 import (
     "os"
     "log"
+    "math"
     "bufio"
     "strconv"
     "strings"
@@ -37,6 +38,30 @@ func load_one(infn string) (err error) {
     return
 }
 
+
+// The sigmoid function.
+func sigmoid(z float64) float64 {
+    return 1.0 / (1.0 + math.Exp(-z))
+}
+
+
+// Derivative of the sigmoid function.
+func sigmoid_prime(z float64) float64 {
+    return sigmoid(z) * (1 - sigmoid(z))
+}
+
+
+type Network struct {
+    num_layers int
+    biases  []*mat64.Dense
+    weights []*mat64.Dense
+}
+
+
+func NewNetwork(sizes []int) *Network {
+    n := &Network{num_layers: len(sizes)}
+    return n
+}
 
 func main() {
     load_one("trai_data.txt")
