@@ -4,6 +4,7 @@ import (
     "os"
     "log"
     "math"
+    "math/rand"
     "bufio"
     "strconv"
     "strings"
@@ -40,28 +41,84 @@ func load_one(infn string) (err error) {
 
 
 // The sigmoid function.
-func sigmoid(z float64) float64 {
+// Scale, Inverse, Apply
+func sigmoid(z *mat64.Dense) *mat64.Dense {
+    //return 1.0 / (1.0 + math.Exp(-z))
+    a := mat64.NewDense(0, 0, nil)
+    e := mat64.NewDense(0, 0, nil)
+    o := mat64.NewDense(0, 0, nil)
+    i := mat64.NewDense(0, 0, nil)
+    a.Scale(-1, z)
+    e.Exp(a)
+    o.Apply(func(x, y int, v float64)float64{return 1.0 + v}, e)
+    i.Inverse(o)
+    return i
+}
+
+
+// Derivative of the sigmoid function.
+func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
+    //return sigmoid(z) * (1 - sigmoid(z))
+    m := mat64.NewDense(0, 0, nil)
+    a := mat64.NewDense(0, 0, nil)
+    s := sigmoid(z)
+    a.Apply(func(x, y int, v float64)float64{return 1.0 - v}, s)
+    m.Mul(s, a)
+    return m
+}
+
+
+// The sigmoid function.
+func sigmoid_(z float64) float64 {
     return 1.0 / (1.0 + math.Exp(-z))
 }
 
 
 // Derivative of the sigmoid function.
-func sigmoid_prime(z float64) float64 {
-    return sigmoid(z) * (1 - sigmoid(z))
+func sigmoid_prime_(z float64) float64 {
+    return sigmoid_(z) * (1 - sigmoid_(z))
+}
+
+
+func randyx(y, x int) *mat64.Dense {
+    z := x * y
+    dat := make([]float64, z)
+    for i := 0; i < z; i++ {
+        dat[i] = rand.Float64()
+    }
+    return mat64.NewDense(y, x, dat)
 }
 
 
 type Network struct {
     num_layers int
+    sizes   []int
     biases  []*mat64.Dense
     weights []*mat64.Dense
 }
 
 
 func NewNetwork(sizes []int) *Network {
-    n := &Network{num_layers: len(sizes)}
-    return n
+    nw := &Network{num_layers: len(sizes), sizes: sizes}
+    nw.biases = make([]*mat64.Dense, nw.num_layers - 1)
+    nw.weights = make([]*mat64.Dense, nw.num_layers - 1)
+    for i := 0; i < nw.num_layers - 1; i++ {
+        y := nw.sizes[i + 1]
+        x := nw.sizes[i]
+        nw.biases[i] = randyx(y, 1)
+        nw.weights[i] = randyx(y, x)
+    }
+    return nw
 }
+
+
+func (nw *Network)feedforward () {}
+func (nw *Network)SGD() {}
+func (nw *Network)update_mini_batch() {}
+func (nw *Network)backprop() {}
+func (nw *Network)evaluate() {}
+func (nw *Network)cost_derivative() {}
+
 
 func main() {
     load_one("trai_data.txt")
