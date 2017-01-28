@@ -31,8 +31,8 @@ func load_one(infn string) (err error) {
             if err != nil { log.Fatal(cols[i], err) }
             dx[i - 1] = f
         }
-        mat64.NewDense(len(dx), 1, dx)
-        if n > 9 || f > 10000 { log.Fatalf("n=%d, f=%f", n, f) }
+        m := mat64.NewDense(len(dx), 1, dx)
+        if n > 9 || f > 10000 || m == nil { log.Fatalf("n=%d, f=%f, m=%#v", n, f, m) }
     }
     return
 }
