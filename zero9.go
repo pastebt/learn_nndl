@@ -66,7 +66,7 @@ func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
     a := mat64.NewDense(0, 0, nil)
     s := sigmoid(z)
     a.Apply(func(x, y int, v float64)float64{return 1.0 - v}, s)
-    m.Mul(s, a)
+    m.MulElem(s, a)
     return m
 }
 

@@ -84,3 +84,32 @@ func TestArgmax(tst *testing.T) {
         tst.Error("argmax Wrong, should 2, get", o)
     }
 }
+
+
+func TestSigmoid_prime(tst *testing.T) {
+    /*
+    a = np.array([[1, 2, 3],[4, 5, 6]])
+    x = 1.0/(1.0+np.exp(-a))
+    y = 1.0/(1.0+np.exp(-a))
+    x
+    array([[ 0.73105858,  0.88079708,  0.95257413],
+           [ 0.98201379,  0.99330715,  0.99752738]])
+    y
+    array([[ 0.73105858,  0.88079708,  0.95257413],
+           [ 0.98201379,  0.99330715,  0.99752738]])
+    x * (1 - y)
+    array([[ 0.19661193,  0.10499359,  0.04517666],
+           [ 0.01766271,  0.00664806,  0.00246651]])
+    */
+    z := mat64.NewDense(2, 3, []float64{1, 2, 3,
+                                        4, 5, 6})
+    o := mat64.NewDense(2, 3, []float64{
+                0.19661193,  0.10499359,  0.04517666,
+                0.01766271,  0.00664806,  0.00246651})
+    s := sigmoid_prime(z)
+    // 0.000000001 will failed
+    if !mat64.EqualApprox(s, o, 0.00000001) {
+        tst.Error("sigmoid_prime Wrong")
+    }
+}
+
