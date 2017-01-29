@@ -19,13 +19,14 @@ type ITEM struct {
 }
 
 
-func load_one(infn string) (err error) {
+func load_one(infn string) (dat []*ITEM, err error) {
     fin, err := os.Open(infn)
     if err != nil {
         log.Fatal(err)
     }
     defer fin.Close()
     println(infn)
+    dat = make([]*ITEM, 0, 1000)
     scanner := bufio.NewScanner(fin)
     for scanner.Scan() {
         cols := strings.Fields(scanner.Text())
@@ -41,7 +42,10 @@ func load_one(infn string) (err error) {
             dx[i - 1] = f
         }
         m := mat64.NewDense(len(dx), 1, dx)
-        if n > 9 || f > 10000 || m == nil { log.Fatalf("n=%d, f=%f, m=%#v", n, f, m) }
+        if n > 9 || f > 10000 || m == nil {
+            log.Fatalf("n=%d, f=%f, m=%#v", n, f, m)
+        }
+        dat = append(dat, &ITEM{x: m, y: int(n)})
     }
     return
 }
@@ -62,27 +66,18 @@ func sigmoid(z *mat64.Dense) *mat64.Dense {
 // Derivative of the sigmoid function.
 func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
     //return sigmoid(z) * (1 - sigmoid(z))
-    m := mat64.NewDense(0, 0, nil)
-    a := mat64.NewDense(0, 0, nil)
     s := sigmoid(z)
+    m := mat64.NewDense(0, 0, nil)
+    /*
+    a := mat64.NewDense(0, 0, nil)
     a.Apply(func(x, y int, v float64)float64{return 1.0 - v}, s)
     m.MulElem(s, a)
+    */
+    m.Apply(func(x, y int, v float64)float64{
+                return v * (1.0 - v)
+            }, s)
     return m
 }
-
-
-/*
-// The sigmoid function.
-func sigmoid_(z float64) float64 {
-    return 1.0 / (1.0 + math.Exp(-z))
-}
-
-
-// Derivative of the sigmoid function.
-func sigmoid_prime_(z float64) float64 {
-    return sigmoid_(z) * (1 - sigmoid_(z))
-}
-*/
 
 
 func randyx(y, x int) *mat64.Dense {
@@ -96,16 +91,12 @@ func randyx(y, x int) *mat64.Dense {
 
 
 func dot(w, a *mat64.Dense) *mat64.Dense {
-    //fmt.Printf("w = %#v\na = %#v\n", w, a)
     r, _ := w.Dims()
-    //fmt.Printf("c=%#v\n", c)
     d := make([]float64, r)
     v := a.ColView(0)
-    //fmt.Printf("v=%#v\n", v)
     for i := 0; i < len(d); i++ {
         d[i] = mat64.Dot(w.RowView(i), v)
     }
-    //fmt.Printf("d = %#v\n", d)
     return mat64.NewDense(r, 1, d)
 }
 
@@ -132,6 +123,32 @@ func shuffle(dat []*ITEM) {
     for i := range dat {
         j := rand.Intn(i + 1)
         dat[i], dat[j] = dat[j], dat[i]
+    }
+}
+
+
+func zip(A, B []*mat64.Dense, f func(x,y *mat64.Dense)*mat64.Dense) []*mat64.Dense {
+    Z := make([]*mat64.Dense, len(A))
+    for i, a := range A {
+        Z[i] = f(a, B[i])
+    }
+    return Z
+}
+
+
+func zeros(ts []*mat64.Dense) []*mat64.Dense {
+    zs := make([]*mat64.Dense, len(ts))
+    for i, t := range ts {
+        r, c := t.Dims()
+        zs[i] = mat64.NewDense(r, c, nil)
+    }
+    return zs
+}
+
+
+func reset(ts []*mat64.Dense) {
+    for _, t := range ts {
+        t.Reset()
     }
 }
 
@@ -174,7 +191,7 @@ func (nw *Network)feedforward (a *mat64.Dense) *mat64.Dense{
 }
 
 func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
-                      eta int, test_data []*ITEM) {
+                      eta float64, test_data []*ITEM) {
     for j := 0; j < epochs; j++ {
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {
@@ -189,8 +206,45 @@ func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
     }
 }
 
-func (nw *Network)update_mini_batch(mini_batch []*ITEM, eta int) {}
-func (nw *Network)backprop() {}
+
+func (nw *Network)mb_add(ns, dn []*mat64.Dense) []*mat64.Dense {
+    z := make([]*mat64.Dense, len(ns))
+    for i := range ns {
+        x := mat64.NewDense(0, 0, nil)
+        x.Add(ns[i], dn[i])
+        z[i] = x
+    }
+    return z
+}
+
+func (nw *Network)mb_cal(p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
+    z := make([]*mat64.Dense, len(ns))
+    for i := range dn {
+        m := mat64.NewDense(0, 0, nil)
+        m.Apply(func(r, c int, v float64)float64{
+                    return ns[i].At(r, c) - p * v
+                }, dn[i])
+        z[i] = m
+    }
+    return z
+}
+
+func (nw *Network)update_mini_batch(mini_batch []*ITEM, eta float64) {
+    nabla_b := zeros(nw.biases)
+    nabla_w := zeros(nw.weights)
+    for _, it  := range mini_batch {
+        delta_nabla_b, delta_nabla_w := nw.backprop(it)
+        nabla_b = nw.mb_add(nabla_b, delta_nabla_b)
+        nabla_w = nw.mb_add(nabla_w, delta_nabla_w)
+    }
+    p := eta / float64(len(mini_batch))
+    nw.weights = nw.mb_cal(p, nw.weights, nabla_w)
+    nw.biases = nw.mb_cal(p, nw.biases, nabla_b)
+}
+
+func (nw *Network)backprop(it *ITEM) (dnb, dnw []*mat64.Dense) {
+    return
+}
 
 func (nw *Network)evaluate(test_data []*ITEM) int {
     eq := 0

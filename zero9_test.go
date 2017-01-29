@@ -113,3 +113,57 @@ func TestSigmoid_prime(tst *testing.T) {
     }
 }
 
+
+func BenchmarkAdd0(bm *testing.B) {
+    a := mat64.NewDense(2, 3, []float64{1, 2, 3,
+                                        4, 5, 6})
+    b := mat64.NewDense(2, 3, []float64{9, 8, 7,
+                                        4, 5, 6})
+    z := mat64.NewDense(2, 3, []float64{0, 0, 0, 0, 0, 0})
+    for i := 0; i < bm.N; i++ {
+        z.Reset()
+        z.Add(a, b)
+    }
+}
+
+
+func BenchmarkAdd1(bm *testing.B) {
+    a := mat64.NewDense(2, 3, []float64{1, 2, 3,
+                                        4, 5, 6})
+    b := mat64.NewDense(2, 3, []float64{9, 8, 7,
+                                        4, 5, 6})
+    for i := 0; i < bm.N; i++ {
+        z := mat64.NewDense(0, 0, nil)
+        //z := mat64.DenseCopyOf (a)
+        z.Add(a, b)
+    }
+}
+
+
+func BenchmarkAdd2(bm *testing.B) {
+    a := mat64.NewDense(2, 3, []float64{1, 2, 3,
+                                        4, 5, 6})
+    b := mat64.NewDense(2, 3, []float64{9, 8, 7,
+                                        4, 5, 6})
+    z := mat64.NewDense(2, 3, []float64{0, 0, 0, 0, 0, 0})
+    for i := 0; i < bm.N; i++ {
+        //z := mat64.NewDense(0, 0, nil)
+        z.Apply(func(x,y int, v float64)float64{
+                    return b.At(x, y) + v
+                }, a)
+    }
+}
+
+
+func BenchmarkAdd3(bm *testing.B) {
+    a := mat64.NewDense(2, 3, []float64{1, 2, 3,
+                                        4, 5, 6})
+    b := mat64.NewDense(2, 3, []float64{9, 8, 7,
+                                        4, 5, 6})
+    for i := 0; i < bm.N; i++ {
+        a.Apply(func(x,y int, v float64)float64{
+                    return b.At(x, y) + v
+                }, a)
+    }
+}
+
