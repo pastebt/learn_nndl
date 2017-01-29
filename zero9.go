@@ -51,15 +51,11 @@ func load_one(infn string) (err error) {
 // Scale, Inverse, Apply
 func sigmoid(z *mat64.Dense) *mat64.Dense {
     //return 1.0 / (1.0 + math.Exp(-z))
-    a := mat64.NewDense(0, 0, nil)
-    e := mat64.NewDense(0, 0, nil)
-    o := mat64.NewDense(0, 0, nil)
-    i := mat64.NewDense(0, 0, nil)
-    a.Scale(-1, z)
-    e.Exp(a)
-    o.Apply(func(x, y int, v float64)float64{return 1.0 + v}, e)
-    i.Inverse(o)
-    return i
+    ret := mat64.NewDense(0, 0, nil)
+    ret.Apply(func(x, y int, v float64) float64 {
+                return 1.0 / (1.0 + math.Exp(-v))
+              }, z)
+    return ret
 }
 
 
@@ -75,6 +71,7 @@ func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
 }
 
 
+/*
 // The sigmoid function.
 func sigmoid_(z float64) float64 {
     return 1.0 / (1.0 + math.Exp(-z))
@@ -85,6 +82,7 @@ func sigmoid_(z float64) float64 {
 func sigmoid_prime_(z float64) float64 {
     return sigmoid_(z) * (1 - sigmoid_(z))
 }
+*/
 
 
 func randyx(y, x int) *mat64.Dense {
@@ -116,12 +114,13 @@ func argmax(a *mat64.Dense) int {
     f := a.At(0, 0)
     idx := 0
     r, c := a.Dims()
-    if c != 1 { log.Fatal("argmax, c != 1") }
     for i := 0; i < r; i++ {
-        t := a.At(i, 0)
-        if t > f {
-            f = t
-            idx = i
+        for j := 0; j < c; j++ {
+            t := a.At(i, j)
+            if t > f {
+                f = t
+                idx = i * c + j
+            }
         }
     }
     return idx
@@ -208,28 +207,10 @@ func (nw *Network)cost_derivative(output_activations, y *mat64.Dense) *mat64.Den
 }
 
 
-func test() {
+func main() {
     /*
     load_one("trai_data.txt")
     load_one("vali_data.txt")
     load_one("test_data.txt")
     */
-    //w := randyx(2, 2)
-    //a := randyx(2, 1)
-    w := mat64.NewDense(3, 2, []float64{1.682852  , -0.03961098,
-                                        0.03793304,  0.42585802,
-                                        0.74246289, -0.03209176})
-    a := mat64.NewDense(2, 1, []float64{-0.1631285,
-                                        -1.73508289})
-    /* np.dot(w, a)
-    array([[-0.20579278],
-           [-0.74508692],
-           [-0.06543499]]) */
-    d := dot(w, a)
-    fmt.Printf("d = %#v\n", d)
-}
-
-
-func main() {
-
 }
