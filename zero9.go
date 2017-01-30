@@ -90,7 +90,9 @@ func randyx(y, x int) *mat64.Dense {
 }
 
 
-func dot(w, a *mat64.Dense) *mat64.Dense {
+//func dot(w, a *mat64.Dense) *mat64.Dense {
+func dot(mw, ma mat64.Matrix) *mat64.Dense {
+    w, a := mw.(*mat64.Dense), ma.(*mat64.Dense)
     r, _ := w.Dims()
     d := make([]float64, r)
     v := a.ColView(0)
@@ -101,7 +103,7 @@ func dot(w, a *mat64.Dense) *mat64.Dense {
 }
 
 
-func argmax(a *mat64.Dense) int {
+func argmax(a mat64.Matrix) int {
     f := a.At(0, 0)
     idx := 0
     r, c := a.Dims()
@@ -126,7 +128,7 @@ func shuffle(dat []*ITEM) {
     }
 }
 
-
+/*
 func zip(A, B []*mat64.Dense, f func(x,y *mat64.Dense)*mat64.Dense) []*mat64.Dense {
     Z := make([]*mat64.Dense, len(A))
     for i, a := range A {
@@ -134,7 +136,7 @@ func zip(A, B []*mat64.Dense, f func(x,y *mat64.Dense)*mat64.Dense) []*mat64.Den
     }
     return Z
 }
-
+*/
 
 func zeros(ts []*mat64.Dense) []*mat64.Dense {
     zs := make([]*mat64.Dense, len(ts))
@@ -145,13 +147,13 @@ func zeros(ts []*mat64.Dense) []*mat64.Dense {
     return zs
 }
 
-
+/*
 func reset(ts []*mat64.Dense) {
     for _, t := range ts {
         t.Reset()
     }
 }
-
+*/
 
 type Network struct {
     num_layers int
@@ -242,7 +244,36 @@ func (nw *Network)update_mini_batch(mini_batch []*ITEM, eta float64) {
     nw.biases = nw.mb_cal(p, nw.biases, nabla_b)
 }
 
-func (nw *Network)backprop(it *ITEM) (dnb, dnw []*mat64.Dense) {
+func (nw *Network)backprop(it *ITEM) (nabla_b, nabla_w []*mat64.Dense) {
+    nabla_b = zeros(nw.biases)
+    nabla_w = zeros(nw.weights)
+    // feedforward
+    activation := it.x
+    // list to store all the activations, layer by layer
+    activations := []*mat64.Dense{it.x}
+    // list to store all the z vectors, layer by layer
+    zs := make([]*mat64.Dense, 0, 10)
+    for i := range nw.biases {
+        z := mat64.NewDense(0, 0, nil)
+        z.Add(dot(nw.weights[i], activation), nw.biases[i])
+        zs = append(zs, z)
+        activation = sigmoid(z)
+        activations = append(activations, activation)
+    }
+    // backward pass
+    delta := mat64.NewDense(0, 0, nil)
+    delta.MulElem(nw.cost_derivative(activations[len(activations) - 1], it.y),
+                  sigmoid_prime(zs[len(zs) - 1]))
+    nabla_b[len(nabla_b) - 1] = delta
+    nabla_w[len(nabla_w) - 1] = dot(delta, activations[len(activations) - 2].T())
+    for l := 2; l < nw.num_layers; l++ {
+        z := zs[len(zs) - l]
+        sp := sigmoid_prime(z)
+        delta = mat64.NewDense(0, 0, nil)
+        delta.MulElem(dot(nw.weights[len(nw.weights)-l+1].T(), delta), sp)
+        nabla_b[len(nabla_b)-l] = delta
+        nabla_w[len(nabla_w)-l] = dot(delta, activations[len(activations)-l-1].T())
+    }
     return
 }
 
@@ -254,9 +285,12 @@ func (nw *Network)evaluate(test_data []*ITEM) int {
     return eq
 }
 
-func (nw *Network)cost_derivative(output_activations, y *mat64.Dense) *mat64.Dense{
+func (nw *Network)cost_derivative(output_activations *mat64.Dense, y int) *mat64.Dense{
     m := mat64.NewDense(0, 0, nil)
-    m.Sub(output_activations, y)
+    //m.Sub(output_activations, y)
+    f := float64(y)
+    m.Apply(func(r, c int, v float64)float64{return v - f},
+            output_activations)
     return m
 }
 
