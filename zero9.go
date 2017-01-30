@@ -9,6 +9,8 @@ import (
     "bufio"
     "strconv"
     "strings"
+//    "github.com/gonum/floats"
+    "github.com/gonum/blas/blas64"
     "github.com/gonum/matrix/mat64"
 )
 
@@ -90,9 +92,9 @@ func randyx(y, x int) *mat64.Dense {
 }
 
 
-//func dot(w, a *mat64.Dense) *mat64.Dense {
-func dot(mw, ma mat64.Matrix) *mat64.Dense {
-    w, a := mw.(*mat64.Dense), ma.(*mat64.Dense)
+func dot(w, a *mat64.Dense) *mat64.Dense {
+//func dot(mw, ma mat64.Matrix) *mat64.Dense {
+    //w, a := mw.(*mat64.Dense), ma.(*mat64.Dense)
     r, _ := w.Dims()
     d := make([]float64, r)
     v := a.ColView(0)
@@ -147,13 +149,59 @@ func zeros(ts []*mat64.Dense) []*mat64.Dense {
     return zs
 }
 
-/*
-func reset(ts []*mat64.Dense) {
-    for _, t := range ts {
-        t.Reset()
+
+func add(dst, src *mat64.Dense) (z *mat64.Dense) {
+    rd, cd := dst.Dims()
+    rs, cs := src.Dims()
+    if rd == rs && cd == cs {
+        z = mat64.NewDense(0, 0, nil)
+        z.Add(dst, src)
+        return
     }
+    if (rd == 1 || cd == 1) {
+        src, dst = dst, src
+        rd, cd, rs, cs = rs, cs, rd, cd
+    }
+    if rs == 1 && cs == cd {
+        /*
+        fs := src.RawRowView(0)
+        z = mat64.DenseCopyOf(dst)
+        for r := 0; r < rd; r++ {
+            fd := z.RawRowView(r)
+            floats.Add(fd, fs)
+            z.SetRow(r, fd)
+        }
+        */
+        vs := src.RowView(0).RawVector()
+        z = mat64.DenseCopyOf(dst)
+        for r := 0; r < rd; r++ {
+            vd := z.RowView(r).RawVector()
+            blas64.Axpy(cd, 1, vs, vd)
+        }
+        return
+    } else if cs == 1 && rd == rs {
+        vs := src.ColView(0).RawVector()
+        z = mat64.DenseCopyOf(dst)
+        for c := 0; c < cd; c++ {
+            vd := z.ColView(c).RawVector()
+            blas64.Axpy(rd, 1, vs, vd)
+        }
+        return
+    }
+    return
 }
-*/
+
+
+func T(d *mat64.Dense) *mat64.Dense {
+    return mat64.DenseCopyOf(d.T())
+}
+
+
+func show(name string, m mat64.Matrix) {
+    r, c := m.Dims()
+    fmt.Printf("%s: r=%d, c=%d\n", name, r, c)
+}
+
 
 type Network struct {
     num_layers int
@@ -212,9 +260,15 @@ func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
 func (nw *Network)mb_add(ns, dn []*mat64.Dense) []*mat64.Dense {
     z := make([]*mat64.Dense, len(ns))
     for i := range ns {
+        /*
         x := mat64.NewDense(0, 0, nil)
+        print(i, " ")
+        show("ns", ns[i])
+        show("dn", dn[i])
         x.Add(ns[i], dn[i])
         z[i] = x
+        */
+        z[i] = add(ns[i], dn[i])
     }
     return z
 }
@@ -265,14 +319,18 @@ func (nw *Network)backprop(it *ITEM) (nabla_b, nabla_w []*mat64.Dense) {
     delta.MulElem(nw.cost_derivative(activations[len(activations) - 1], it.y),
                   sigmoid_prime(zs[len(zs) - 1]))
     nabla_b[len(nabla_b) - 1] = delta
-    nabla_w[len(nabla_w) - 1] = dot(delta, activations[len(activations) - 2].T())
+    //nabla_w[len(nabla_w) - 1] = dot(delta, activations[len(activations) - 2].T())
+    nabla_w[len(nabla_w) - 1] = dot(delta, T(activations[len(activations) - 2]))
     for l := 2; l < nw.num_layers; l++ {
         z := zs[len(zs) - l]
         sp := sigmoid_prime(z)
-        delta = mat64.NewDense(0, 0, nil)
-        delta.MulElem(dot(nw.weights[len(nw.weights)-l+1].T(), delta), sp)
+        d := mat64.NewDense(0, 0, nil)
+        //delta.MulElem(dot(nw.weights[len(nw.weights)-l+1].T(), delta), sp)
+        d.MulElem(dot(T(nw.weights[len(nw.weights)-l+1]), delta), sp)
+        delta = d
         nabla_b[len(nabla_b)-l] = delta
-        nabla_w[len(nabla_w)-l] = dot(delta, activations[len(activations)-l-1].T())
+        //nabla_w[len(nabla_w)-l] = dot(delta, activations[len(activations)-l-1].T())
+        nabla_w[len(nabla_w)-l] = dot(delta, T(activations[len(activations)-l-1]))
     }
     return
 }
@@ -296,9 +354,12 @@ func (nw *Network)cost_derivative(output_activations *mat64.Dense, y int) *mat64
 
 
 func main() {
-    /*
-    load_one("trai_data.txt")
-    load_one("vali_data.txt")
-    load_one("test_data.txt")
-    */
+    trai, err := load_one("trai_data.txt")
+    if err != nil { log.Fatal(err) }
+    //_, err := load_one("vali_data.txt")
+    //if err != nil { log.Fatal(err) }
+    test, err := load_one("test_data.txt")
+    if err != nil { log.Fatal(err) }
+    n := NewNetwork([]int{784, 30, 10})
+    n.SGD(trai, 30, 10, 4.0, test)
 }

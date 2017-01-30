@@ -167,3 +167,53 @@ func BenchmarkAdd3(bm *testing.B) {
     }
 }
 
+
+func TestAdd(tst *testing.T) {
+    /*
+    a = np.array([[1, 2, 3],[40, 5, 6]])
+    b = np.array([[1],[2]])
+    a + b 
+    array([[ 2,  3,  4],
+           [42,  7,  8]])
+    b + a
+    array([[ 2,  3,  4],
+           [42,  7,  8]])
+    b = np.array([[1,2]])
+    a + b ValueError
+    b = np.array([[1, 2, 3]])
+    b + a
+    array([[ 2,  4,  6],
+           [41,  7,  9]])
+    */
+    a := mat64.NewDense(2, 3, []float64{1, 2, 3,
+                                       40, 5, 6})
+    b := mat64.NewDense(2, 1, []float64{1,
+                                        2})
+    o := mat64.NewDense(2, 3, []float64{2,  3,  4,
+                                       42,  7,  8})
+    s := add(a, b)
+    if !mat64.Equal(o, s) {
+        tst.Error("TestAdd error", s, o)
+    }
+    s = add(b, a)
+    if !mat64.Equal(o, s) {
+        tst.Error("TestAdd error", s, o)
+    }
+    b = mat64.NewDense(1, 2, []float64{1,2})
+    s1, s2 := add(a, b), add(b, a)
+    if s1 != nil || s2 != nil {
+        tst.Error("TestAdd error", s, o)
+    }
+
+    b = mat64.NewDense(1, 3, []float64{1, 2, 3})
+    o = mat64.NewDense(2, 3, []float64{2,  4,  6,
+                                      41,  7,  9})
+    s = add(b, a)
+    if !mat64.Equal(o, s) {
+        tst.Error("TestAdd error", s, o)
+    }
+    s = add(a, b)
+    if !mat64.Equal(o, s) {
+        tst.Error("TestAdd error", s, o)
+    }
+}
