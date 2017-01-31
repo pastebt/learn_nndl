@@ -225,6 +225,7 @@ func TestCost_derivative(tst *testing.T) {
     a - 1
         array([[0, 1, 2, 3]])
     */
+    /*
     n := NewNetwork([]int{784, 30, 10})
     a := mat64.NewDense(1, 4, []float64{1, 2, 3, 4})
     o := mat64.NewDense(1, 4, []float64{0, 1, 2, 3})
@@ -242,4 +243,65 @@ func TestCost_derivative(tst *testing.T) {
     if !mat64.Equal(o, s) {
         tst.Error("TestCost_derivative error", s, o)
     }
+    */
+}
+
+
+func make01(r, c int) *mat64.Dense {
+    d := make([]float64, r * c)
+    for i := range d { d[i] = 0.1 * float64(i + 1) }
+    return mat64.NewDense(r, c, d)
+}
+
+
+func tNetwork(sizes []int) *Network {
+    nw := &Network{num_layers: len(sizes), sizes: sizes}
+    nw.biases = make([]*mat64.Dense, nw.num_layers - 1)
+    nw.weights = make([]*mat64.Dense, nw.num_layers - 1)
+    for i := 0; i < nw.num_layers - 1; i++ {
+        y := nw.sizes[i + 1]
+        x := nw.sizes[i]
+        //nw.biases[i] = randyx(y, 1)
+        nw.biases[i] = make01(y, 1)
+        //nw.weights[i] = randyx(y, x)
+        nw.weights[i] = make01(y, x)
+    }
+    return nw
+}
+
+
+func TestFeedforward(tst *testing.T) {
+    nw := tNetwork([]int{4, 3, 2})
+    o := mat64.NewDense(2, 1, []float64{0.66719738,
+                                        0.84321898})
+    f := nw.feedforward(mat64.NewDense(4, 1, []float64{1, 2, 3, 4}))
+    // 0.000000001 will failed
+    if !mat64.EqualApprox(f, o, 0.00000001) {
+        tst.Error("feedforward Wrong", f, o)
+    }
+}
+
+
+func TestBackprop(tst *testing.T) {
+    /*
+    b: [array([[-1.52167557e-02],
+               [-3.97545878e-04],
+               [-8.63189706e-06]]),
+        array([[-0.96207731],
+               [-0.68173021]])
+        ]
+    w: [array([[-1.52167557e-02, -3.04335114e-02, -4.56502670e-02, -6.08670227e-02],
+               [-3.97545878e-04, -7.95091755e-04, -1.19263763e-03, -1.59018351e-03],
+               [-8.63189706e-06, -1.72637941e-05, -2.58956912e-05, -3.45275882e-05]]),
+        array([[-0.9206048 , -0.96135957, -0.96206541],
+               [-0.65234269, -0.68122162, -0.68172178]])
+        ]
+    */
+    nw := tNetwork([]int{4, 3, 2})
+    i := &ITEM{x: mat64.NewDense(4, 1, []float64{1, 2, 3, 4}),
+               yv: mat64.NewDense(2, 1, []float64{5, 6}),
+               yi: 1}
+    b, w := nw.backprop(i)
+    tst.Log("b =", b[0])
+    tst.Log("w =", w[0])
 }

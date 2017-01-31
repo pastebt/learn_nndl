@@ -57,7 +57,6 @@ func load_one(infn string) (dat []*ITEM, err error) {
 
 
 // The sigmoid function.
-// Scale, Inverse, Apply
 func sigmoid(z *mat64.Dense) *mat64.Dense {
     //return 1.0 / (1.0 + math.Exp(-z))
     ret := mat64.NewDense(0, 0, nil)
