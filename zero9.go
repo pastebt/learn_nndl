@@ -9,15 +9,15 @@ import (
     "bufio"
     "strconv"
     "strings"
-//    "github.com/gonum/floats"
+    "github.com/gonum/floats"
     "github.com/gonum/blas/blas64"
     "github.com/gonum/matrix/mat64"
 )
 
 
 type ITEM struct {
-    x *mat64.Dense
-    y int
+    x, yv *mat64.Dense
+    yi int
 }
 
 
@@ -47,7 +47,10 @@ func load_one(infn string) (dat []*ITEM, err error) {
         if n > 9 || f > 10000 || m == nil {
             log.Fatalf("n=%d, f=%f, m=%#v", n, f, m)
         }
-        dat = append(dat, &ITEM{x: m, y: int(n)})
+        v := mat64.NewDense(10, 1, nil)
+        y := int(n)
+        v.Set(y, 0, 1.0)
+        dat = append(dat, &ITEM{x: m, yv: v, yi: y})
     }
     return
 }
@@ -105,7 +108,8 @@ func dot(w, a *mat64.Dense) *mat64.Dense {
 }
 
 
-func argmax(a mat64.Matrix) int {
+func argmax(a *mat64.Dense) int {
+    /*
     f := a.At(0, 0)
     idx := 0
     r, c := a.Dims()
@@ -119,6 +123,10 @@ func argmax(a mat64.Matrix) int {
         }
     }
     return idx
+    */
+    i := floats.MaxIdx(a.RawMatrix().Data)
+    //fmt.Printf("i = %d\n", i)
+    return i
 }
 
 
@@ -243,6 +251,7 @@ func (nw *Network)feedforward (a *mat64.Dense) *mat64.Dense{
 func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
                       eta float64, test_data []*ITEM) {
     for j := 0; j < epochs; j++ {
+        fmt.Printf("last biase = %#v\n", nw.biases[len(nw.biases) - 1])
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {
             nw.update_mini_batch(training_data[k:k+mini_batch_size], eta)
@@ -316,7 +325,7 @@ func (nw *Network)backprop(it *ITEM) (nabla_b, nabla_w []*mat64.Dense) {
     }
     // backward pass
     delta := mat64.NewDense(0, 0, nil)
-    delta.MulElem(nw.cost_derivative(activations[len(activations) - 1], it.y),
+    delta.MulElem(nw.cost_derivative(activations[len(activations) - 1], it.yv),
                   sigmoid_prime(zs[len(zs) - 1]))
     nabla_b[len(nabla_b) - 1] = delta
     //nabla_w[len(nabla_w) - 1] = dot(delta, activations[len(activations) - 2].T())
@@ -325,8 +334,7 @@ func (nw *Network)backprop(it *ITEM) (nabla_b, nabla_w []*mat64.Dense) {
         z := zs[len(zs) - l]
         sp := sigmoid_prime(z)
         d := mat64.NewDense(0, 0, nil)
-        //delta.MulElem(dot(nw.weights[len(nw.weights)-l+1].T(), delta), sp)
-        d.MulElem(dot(T(nw.weights[len(nw.weights)-l+1]), delta), sp)
+        d.MulElem(dot(T(nw.weights[len(nw.weights) - l + 1]), delta), sp)
         delta = d
         nabla_b[len(nabla_b)-l] = delta
         //nabla_w[len(nabla_w)-l] = dot(delta, activations[len(activations)-l-1].T())
@@ -338,17 +346,19 @@ func (nw *Network)backprop(it *ITEM) (nabla_b, nabla_w []*mat64.Dense) {
 func (nw *Network)evaluate(test_data []*ITEM) int {
     eq := 0
     for _, item := range test_data {
-        if item.y == argmax(nw.feedforward(item.x)) { eq = eq + 1 }
+        if item.yi == argmax(nw.feedforward(item.x)) { eq = eq + 1 }
     }
     return eq
 }
 
-func (nw *Network)cost_derivative(output_activations *mat64.Dense, y int) *mat64.Dense{
+func (nw *Network)cost_derivative(output_activations, y *mat64.Dense) *mat64.Dense{
     m := mat64.NewDense(0, 0, nil)
-    //m.Sub(output_activations, y)
+    m.Sub(output_activations, y)
+    /*
     f := float64(y)
     m.Apply(func(r, c int, v float64)float64{return v - f},
             output_activations)
+    */
     return m
 }
 

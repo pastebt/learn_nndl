@@ -217,3 +217,29 @@ func TestAdd(tst *testing.T) {
         tst.Error("TestAdd error", s, o)
     }
 }
+
+
+func TestCost_derivative(tst *testing.T) {
+    /*
+    a = np.array([[1, 2, 3, 4]])
+    a - 1
+        array([[0, 1, 2, 3]])
+    */
+    n := NewNetwork([]int{784, 30, 10})
+    a := mat64.NewDense(1, 4, []float64{1, 2, 3, 4})
+    o := mat64.NewDense(1, 4, []float64{0, 1, 2, 3})
+    s := n.cost_derivative(a, 1)
+    if !mat64.Equal(o, s) {
+        tst.Error("TestCost_derivative error", s, o)
+    }
+    a = mat64.NewDense(3, 2, []float64{1, 2,
+                                       3, 4,
+                                       5, 7})
+    o = mat64.NewDense(3, 2, []float64{0, 1,
+                                       2, 3,
+                                       4, 6})
+    s = n.cost_derivative(a, 1)
+    if !mat64.Equal(o, s) {
+        tst.Error("TestCost_derivative error", s, o)
+    }
+}
