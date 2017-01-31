@@ -88,15 +88,16 @@ func randyx(y, x int) *mat64.Dense {
     z := x * y
     dat := make([]float64, z)
     for i := 0; i < z; i++ {
-        dat[i] = rand.Float64()
+        dat[i] = rand.Float64() * 2.0 - 1.0
     }
     return mat64.NewDense(y, x, dat)
 }
 
 
-func dot(w, a *mat64.Dense) *mat64.Dense {
-//func dot(mw, ma mat64.Matrix) *mat64.Dense {
+//func dot(w, a *mat64.Dense) *mat64.Dense {
+func dot(w, a mat64.Matrix) *mat64.Dense {
     //w, a := mw.(*mat64.Dense), ma.(*mat64.Dense)
+    /*
     r, _ := w.Dims()
     d := make([]float64, r)
     v := a.ColView(0)
@@ -104,6 +105,10 @@ func dot(w, a *mat64.Dense) *mat64.Dense {
         d[i] = mat64.Dot(w.RowView(i), v)
     }
     return mat64.NewDense(r, 1, d)
+    */
+    z := mat64.NewDense(0, 0, nil)
+    z.Product(w, a)
+    return z
 }
 
 
@@ -124,7 +129,9 @@ func argmax(a *mat64.Dense) int {
     return idx
     */
     i := floats.MaxIdx(a.RawMatrix().Data)
-    //fmt.Printf("i = %d\n", i)
+    //fmt.Printf("i = %d ", i)
+    //fmt.Printf("Data = %#v\n", a.RawMatrix().Data)
+    //fmt.Printf("a = %#v\n", a)
     return i
 }
 
@@ -137,15 +144,6 @@ func shuffle(dat []*ITEM) {
     }
 }
 
-/*
-func zip(A, B []*mat64.Dense, f func(x,y *mat64.Dense)*mat64.Dense) []*mat64.Dense {
-    Z := make([]*mat64.Dense, len(A))
-    for i, a := range A {
-        Z[i] = f(a, B[i])
-    }
-    return Z
-}
-*/
 
 func zeros(ts []*mat64.Dense) []*mat64.Dense {
     zs := make([]*mat64.Dense, len(ts))
@@ -170,15 +168,6 @@ func add(dst, src *mat64.Dense) (z *mat64.Dense) {
         rd, cd, rs, cs = rs, cs, rd, cd
     }
     if rs == 1 && cs == cd {
-        /*
-        fs := src.RawRowView(0)
-        z = mat64.DenseCopyOf(dst)
-        for r := 0; r < rd; r++ {
-            fd := z.RawRowView(r)
-            floats.Add(fd, fs)
-            z.SetRow(r, fd)
-        }
-        */
         vs := src.RowView(0).RawVector()
         z = mat64.DenseCopyOf(dst)
         for r := 0; r < rd; r++ {
@@ -233,30 +222,29 @@ func NewNetwork(sizes []int) *Network {
 
 
 func (nw *Network)feedforward (a *mat64.Dense) *mat64.Dense{
-    /*
-    for i := 0; i < len(nw.biases); i++ {
-        s := mat64.NewDense(0, 0, nil)
-        s.Add(dot(nw.weights[i], a), nw.biases[i])
-        a = sigmoid(s)
-    }*/
+    //fmt.Printf("input a=%#v\n", a)
     for i, b := range nw.biases {
+        /*
         s := mat64.NewDense(0, 0, nil)
         s.Add(dot(nw.weights[i], a), b)
         a = sigmoid(s)
+        */
+        a = sigmoid(add(dot(nw.weights[i], a), b))
     }
+    //fmt.Printf("ouput a=%#v\n", a)
     return a
 }
 
 func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
                       eta float64, test_data []*ITEM) {
     for j := 0; j < epochs; j++ {
-        fmt.Printf("last biase = %#v\n", nw.biases[len(nw.biases) - 1])
+        //fmt.Printf("last biase = %#v\n", nw.biases[len(nw.biases) - 1])
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {
             nw.update_mini_batch(training_data[k:k+mini_batch_size], eta)
         }
         if test_data != nil {
-            fmt.Printf("Epoch %02d: %d / %d\n",
+            fmt.Printf("=============== Epoch %02d: %d / %d\n",
                        j, nw.evaluate(test_data), len(test_data))
         } else {
             fmt.Printf("Epoch %02d complete", j)
@@ -322,22 +310,32 @@ func (nw *Network)backprop(it *ITEM) (nabla_b, nabla_w []*mat64.Dense) {
         activation = sigmoid(z)
         activations = append(activations, activation)
     }
+    /*
+    println("activations:")
+    for _, _a0 := range activations {
+        fmt.Printf("%#v\n", _a0)
+    }
+    println("activations")
+    */
     // backward pass
     delta := mat64.NewDense(0, 0, nil)
     delta.MulElem(nw.cost_derivative(activations[len(activations) - 1], it.yv),
                   sigmoid_prime(zs[len(zs) - 1]))
+    //fmt.Printf("delta: %#v\n", delta)
     nabla_b[len(nabla_b) - 1] = delta
-    //nabla_w[len(nabla_w) - 1] = dot(delta, activations[len(activations) - 2].T())
-    nabla_w[len(nabla_w) - 1] = dot(delta, T(activations[len(activations) - 2]))
+    nabla_w[len(nabla_w) - 1] = dot(delta, activations[len(activations) - 2].T())
+    //nabla_w[len(nabla_w) - 1] = dot(delta, T(activations[len(activations) - 2]))
     for l := 2; l < nw.num_layers; l++ {
         z := zs[len(zs) - l]
         sp := sigmoid_prime(z)
         d := mat64.NewDense(0, 0, nil)
-        d.MulElem(dot(T(nw.weights[len(nw.weights) - l + 1]), delta), sp)
+        //d.MulElem(dot(T(nw.weights[len(nw.weights) - l + 1]), delta), sp)
+        d.MulElem(dot(nw.weights[len(nw.weights) - l + 1].T(), delta), sp)
         delta = d
         nabla_b[len(nabla_b)-l] = delta
-        //nabla_w[len(nabla_w)-l] = dot(delta, activations[len(activations)-l-1].T())
-        nabla_w[len(nabla_w)-l] = dot(delta, T(activations[len(activations)-l-1]))
+        nabla_w[len(nabla_w)-l] = dot(delta, activations[len(activations)-l-1].T())
+        //nabla_w[len(nabla_w)-l] = dot(delta, T(activations[len(activations)-l-1]))
+        //nabla_w[len(nabla_w)-l] = mat64.Dot(delta, T(activations[len(activations)-l-1]))
     }
     return
 }
@@ -345,6 +343,7 @@ func (nw *Network)backprop(it *ITEM) (nabla_b, nabla_w []*mat64.Dense) {
 func (nw *Network)evaluate(test_data []*ITEM) int {
     eq := 0
     for _, item := range test_data {
+        //fmt.Printf("item.x=%#v, yi=%#v, yv=%#v\n", mat64.Max(item.x),  argmax(item.x), item.yv)
         if item.yi == argmax(nw.feedforward(item.x)) { eq = eq + 1 }
     }
     return eq
@@ -370,5 +369,6 @@ func main() {
     test, err := load_one("test_data.txt")
     if err != nil { log.Fatal(err) }
     n := NewNetwork([]int{784, 30, 10})
-    n.SGD(trai, 30, 10, 4.0, test)
+    //n.SGD(trai, 30, 10, 4.0, test)
+    n.SGD(trai, 5, 10, 4.0, test)
 }
