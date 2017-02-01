@@ -57,7 +57,8 @@ func load_one(infn string) (dat []*ITEM, err error) {
 
 
 // The sigmoid function.
-func sigmoid(z *mat64.Dense) *mat64.Dense {
+/*
+func sigmoid_(z *mat64.Dense) *mat64.Dense {
     //return 1.0 / (1.0 + math.Exp(-z))
     ret := mat64.NewDense(0, 0, nil)
     ret.Apply(func(x, y int, v float64) float64 {
@@ -65,10 +66,21 @@ func sigmoid(z *mat64.Dense) *mat64.Dense {
               }, z)
     return ret
 }
-
+*/
+func sigmoid64(fs []float64) {
+    for i, f := range fs {
+        fs[i] = 1.0 / (1.0 + math.Exp(-f))
+    }
+}
+func sigmoid(z *mat64.Dense) *mat64.Dense {
+    s := mat64.DenseCopyOf(z)
+    sigmoid64(s.RawMatrix().Data)
+    return s
+}
 
 // Derivative of the sigmoid function.
-func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
+/*
+func sigmoid_prime_(z *mat64.Dense) *mat64.Dense {
     //return sigmoid(z) * (1 - sigmoid(z))
     s := sigmoid(z)
     m := mat64.NewDense(0, 0, nil)
@@ -76,6 +88,16 @@ func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
                 return v * (1.0 - v)
             }, s)
     return m
+}
+*/
+func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
+    s := mat64.DenseCopyOf(z)
+    fs := s.RawMatrix().Data
+    sigmoid64(fs)
+    for i, f := range fs {
+        fs[i] = f * (1.0 - f)
+    }
+    return s
 }
 
 
@@ -209,13 +231,26 @@ func (nw *Network)mb_add(ns, dn []*mat64.Dense) []*mat64.Dense {
     return z
 }
 
-func (nw *Network)mb_cal(p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
+func (nw *Network)mb_cal_(p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
     z := make([]*mat64.Dense, len(ns))
     for i := range dn {
         m := mat64.NewDense(0, 0, nil)
         m.Apply(func(r, c int, v float64)float64{
                     return ns[i].At(r, c) - p * v
                 }, dn[i])
+        z[i] = m
+    }
+    return z
+}
+func (nw *Network)mb_cal(p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
+    z := make([]*mat64.Dense, len(ns))
+    for i := range dn {
+        m := mat64.DenseCopyOf(ns[i])
+        fs := m.RawMatrix().Data
+        ds := dn[i].RawMatrix().Data
+        for j, f := range fs {
+            fs[j] = f - p * ds[j]
+        }
         z[i] = m
     }
     return z
