@@ -57,7 +57,6 @@ func load_one(infn string) (dat []*ITEM, err error) {
 
 
 // The sigmoid function.
-/*
 func sigmoid_(z *mat64.Dense) *mat64.Dense {
     //return 1.0 / (1.0 + math.Exp(-z))
     ret := mat64.NewDense(0, 0, nil)
@@ -66,7 +65,7 @@ func sigmoid_(z *mat64.Dense) *mat64.Dense {
               }, z)
     return ret
 }
-*/
+
 func sigmoid64(fs []float64) {
     for i, f := range fs {
         fs[i] = 1.0 / (1.0 + math.Exp(-f))
@@ -78,8 +77,8 @@ func sigmoid(z *mat64.Dense) *mat64.Dense {
     return s
 }
 
+
 // Derivative of the sigmoid function.
-/*
 func sigmoid_prime_(z *mat64.Dense) *mat64.Dense {
     //return sigmoid(z) * (1 - sigmoid(z))
     s := sigmoid(z)
@@ -89,7 +88,7 @@ func sigmoid_prime_(z *mat64.Dense) *mat64.Dense {
             }, s)
     return m
 }
-*/
+
 func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
     s := mat64.DenseCopyOf(z)
     fs := s.RawMatrix().Data
@@ -199,7 +198,7 @@ func NewNetwork(sizes []int) *Network {
 }
 
 
-func (nw *Network)feedforward (a *mat64.Dense) *mat64.Dense{
+func (nw *Network)feedforward(a *mat64.Dense) *mat64.Dense{
     for i, b := range nw.biases {
         a = sigmoid(add(npdot(nw.weights[i], a), b))
     }
@@ -211,7 +210,7 @@ func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
     for j := 0; j < epochs; j++ {
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {
-            nw.update_mini_batch(training_data[k:k+mini_batch_size], eta)
+            nw.update_mini_batch_m(training_data[k:k+mini_batch_size], eta)
         }
         if test_data != nil {
             fmt.Printf("Epoch %02d: %d / %d\n",
@@ -265,6 +264,36 @@ func (nw *Network)update_mini_batch(mini_batch []*ITEM, eta float64) {
         nabla_w = nw.mb_add(nabla_w, delta_nabla_w)
     }
     p := eta / float64(len(mini_batch))
+    nw.weights = nw.mb_cal(p, nw.weights, nabla_w)
+    nw.biases = nw.mb_cal(p, nw.biases, nabla_b)
+}
+
+func (nw *Network)update_mini_batch_m(mini_batch []*ITEM, eta float64) {
+    lm := len(mini_batch)
+    nabla_b := zeros(nw.biases)
+    nabla_w := zeros(nw.weights)
+    itch := make(chan *ITEM, 100)
+    rtch := make(chan [][]*mat64.Dense, 100)
+    go func(){
+        for _, it  := range mini_batch { itch <- it }
+        close(itch)
+    }()
+    for w := 0; w < 4; w++ {
+        go func() {
+            for it := range itch {
+                delta_nabla_b, delta_nabla_w := nw.backprop(it)
+                rtch <- [][]*mat64.Dense{delta_nabla_b, delta_nabla_w}
+            }
+        }()
+    }
+    for i := 0; i < lm; i++ {
+        dat := <-rtch
+        delta_nabla_b, delta_nabla_w := dat[0], dat[1]
+        nabla_b = nw.mb_add(nabla_b, delta_nabla_b)
+        nabla_w = nw.mb_add(nabla_w, delta_nabla_w)
+    }
+
+    p := eta / float64(lm)
     nw.weights = nw.mb_cal(p, nw.weights, nabla_w)
     nw.biases = nw.mb_cal(p, nw.biases, nabla_b)
 }
