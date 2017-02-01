@@ -216,7 +216,7 @@ func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
             fmt.Printf("Epoch %02d: %d / %d\n",
                        j, nw.evaluate(test_data), len(test_data))
         } else {
-            fmt.Printf("Epoch %02d complete", j)
+            fmt.Printf("Epoch %02d complete\n", j)
         }
     }
 }
@@ -250,6 +250,17 @@ func (nw *Network)mb_cal(p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
         for j, f := range fs {
             fs[j] = f - p * ds[j]
         }
+        z[i] = m
+    }
+    return z
+}
+func (nw *Network)mb_cal__(p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
+    z := make([]*mat64.Dense, len(ns))
+    for i := range dn {
+        r, c := ns[i].Dims()
+        m := mat64.NewDense(r, c, nil)
+        dst := m.RawMatrix().Data
+        floats.AddScaledTo(dst, ns[i].RawMatrix().Data, -p, dn[i].RawMatrix().Data)
         z[i] = m
     }
     return z
@@ -352,8 +363,9 @@ func main() {
     if err != nil { log.Fatal(err) }
     //_, err := load_one("vali_data.txt")
     //if err != nil { log.Fatal(err) }
-    test, err := load_one("test_data.txt")
+    //test, err := load_one("test_data.txt")
     if err != nil { log.Fatal(err) }
     n := NewNetwork([]int{784, 30, 10})
-    n.SGD(trai, 30, 10, 4.0, test)
+    //n.SGD(trai, 30, 10, 4.0, test)
+    n.SGD(trai, 30, 10, 4.0, nil)
 }
