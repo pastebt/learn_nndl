@@ -7,6 +7,12 @@ import (
 )
 
 
+/*
+func T() {
+    return mat64.DenseCopyOf(d.T())
+}
+
+
 func TestT(tst *testing.T) {
     z := mat64.NewDense(2, 3, []float64{1, 2, 3,
                                         4, 5, 6})
@@ -18,6 +24,7 @@ func TestT(tst *testing.T) {
         tst.Error("T wrong",  s, o)
     }
 }
+*/
 
 func TestSigmoid(tst *testing.T) {
     /*
@@ -40,7 +47,7 @@ func TestSigmoid(tst *testing.T) {
 }
 
 
-func TestDot(tst *testing.T) {
+func TestNpdot(tst *testing.T) {
     w := mat64.NewDense(3, 2, []float64{1.682852  , -0.03961098,
                                         0.03793304,  0.42585802,
                                         0.74246289, -0.03209176})
@@ -53,7 +60,7 @@ func TestDot(tst *testing.T) {
     o := mat64.NewDense(3, 1, []float64{-0.20579278,
                                         -0.74508692,
                                         -0.06543499})
-    d := dot(w, a)
+    d := npdot(w, a)
     // 0.000000001 will failed
     if !mat64.EqualApprox(d, o, 0.00000001) {
         tst.Error("dot Wrong")
