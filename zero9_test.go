@@ -3,10 +3,19 @@ package main
 import (
     "testing"
     "github.com/gonum/floats"
+    //"github.com/gonum/blas"
+    "github.com/gonum/blas/blas64"
     "github.com/gonum/matrix/mat64"
 )
 
 
+func TestDasum(tst *testing.T) {
+    x := []float64{1, 2, 3}
+    r := blas64.Implementation().Dasum(3, x, 1)
+    if r != 6 {
+        tst.Error("TestDasum wrong,6 !=", r)
+    }
+}
 /*
 func T() {
     return mat64.DenseCopyOf(d.T())

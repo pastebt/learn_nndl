@@ -11,7 +11,7 @@ import (
     "strconv"
     "strings"
     "github.com/gonum/floats"
-    "github.com/gonum/blas/cgo"
+//    "github.com/gonum/blas/cgo"
     "github.com/gonum/blas/blas64"
     "github.com/gonum/matrix/mat64"
 )
@@ -26,7 +26,7 @@ type ITEM struct {
 
 func load_one(infn string) (dat []*ITEM, err error) {
 
-    blas64.Use(cgo.Implementation{})
+//    blas64.Use(cgo.Implementation{})
 
     fin, err := os.Open(infn)
     if err != nil {
