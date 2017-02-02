@@ -11,14 +11,13 @@ import (
     "strconv"
     "strings"
     "github.com/gonum/floats"
-//    "github.com/gonum/blas/cgo"
+    "github.com/gonum/blas/cgo"
     "github.com/gonum/blas/blas64"
     "github.com/gonum/matrix/mat64"
 )
 
 
 type ITEM struct {
-/////////////////////+build cblas
     x, yv *mat64.Dense
     yi int
 }
@@ -26,7 +25,7 @@ type ITEM struct {
 
 func load_one(infn string) (dat []*ITEM, err error) {
 
-//    blas64.Use(cgo.Implementation{})
+    blas64.Use(cgo.Implementation{})
 
     fin, err := os.Open(infn)
     if err != nil {
@@ -75,6 +74,10 @@ func sigmoid_(z *mat64.Dense) *mat64.Dense {
 func sigmoid64(fs []float64) {
     for i, f := range fs {
         fs[i] = 1.0 / (1.0 + math.Exp(-f))
+        // http://stackoverflow.com/questions/10732027/fast-sigmoid-algorithm
+        // bad, not even close
+        //fs[i] = math.Tanh(f)
+        //fs[i] = f / (1 + math.Abs(f))
     }
 }
 func sigmoid(z *mat64.Dense) *mat64.Dense {
@@ -216,7 +219,7 @@ func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
     for j := 0; j < epochs; j++ {
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {
-            nw.update_mini_batch_m(training_data[k:k+mini_batch_size], eta)
+            nw.update_mini_batch(training_data[k:k+mini_batch_size], eta)
         }
         if test_data != nil {
             fmt.Printf("Epoch %02d: %d / %d\n",
