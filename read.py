@@ -5,6 +5,9 @@ import gzip
 # Third-party libraries
 import numpy as np
 
+
+# CGO_LDFLAGS="-L/path/to/OpenBLAS -lopenblas" go install github.com/gonum/blas/cgo
+
 def load_data():
     f = gzip.open('../neural-networks-and-deep-learning/data/mnist.pkl.gz', 'rb')
     training_data, validation_data, test_data = cPickle.load(f)

@@ -10,18 +10,23 @@ import (
     "strconv"
     "strings"
     "github.com/gonum/floats"
+    "github.com/gonum/blas/cgo"
     "github.com/gonum/blas/blas64"
     "github.com/gonum/matrix/mat64"
 )
 
 
 type ITEM struct {
+/////////////////////+build cblas
     x, yv *mat64.Dense
     yi int
 }
 
 
 func load_one(infn string) (dat []*ITEM, err error) {
+
+    blas64.Use(cgo.Implementation{})
+
     fin, err := os.Open(infn)
     if err != nil {
         log.Fatal(err)
@@ -210,7 +215,7 @@ func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
     for j := 0; j < epochs; j++ {
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {
-            nw.update_mini_batch_m(training_data[k:k+mini_batch_size], eta)
+            nw.update_mini_batch(training_data[k:k+mini_batch_size], eta)
         }
         if test_data != nil {
             fmt.Printf("Epoch %02d: %d / %d\n",
@@ -363,9 +368,8 @@ func main() {
     if err != nil { log.Fatal(err) }
     //_, err := load_one("vali_data.txt")
     //if err != nil { log.Fatal(err) }
-    //test, err := load_one("test_data.txt")
+    test, err := load_one("test_data.txt")
     if err != nil { log.Fatal(err) }
     n := NewNetwork([]int{784, 30, 10})
-    //n.SGD(trai, 30, 10, 4.0, test)
-    n.SGD(trai, 30, 10, 4.0, nil)
+    n.SGD(trai, 30, 10, 4.0, test)
 }
