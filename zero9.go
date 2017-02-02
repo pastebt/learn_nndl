@@ -219,7 +219,7 @@ func (nw *Network)SGD(training_data []*ITEM, epochs, mini_batch_size int,
     for j := 0; j < epochs; j++ {
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {
-            nw.update_mini_batch(training_data[k:k+mini_batch_size], eta)
+            nw.update_mini_batch_m(training_data[k:k+mini_batch_size], eta)
         }
         if test_data != nil {
             fmt.Printf("Epoch %02d: %d / %d\n",
@@ -300,7 +300,7 @@ func (nw *Network)update_mini_batch_m(mini_batch []*ITEM, eta float64) {
         for _, it  := range mini_batch { itch <- it }
         close(itch)
     }()
-    thrd := 4
+    thrd := 2
     wg1.Add(thrd)
     wg2.Add(2)
     for w := 0; w < thrd; w++ {
