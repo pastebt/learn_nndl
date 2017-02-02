@@ -6,6 +6,7 @@ import (
     "log"
     "math"
     "math/rand"
+    "sync"
     "bufio"
     "strconv"
     "strings"
@@ -286,28 +287,46 @@ func (nw *Network)update_mini_batch(mini_batch []*ITEM, eta float64) {
 
 func (nw *Network)update_mini_batch_m(mini_batch []*ITEM, eta float64) {
     lm := len(mini_batch)
+    var wg1, wg2 sync.WaitGroup
     nabla_b := zeros(nw.biases)
     nabla_w := zeros(nw.weights)
     itch := make(chan *ITEM, 100)
-    rtch := make(chan [][]*mat64.Dense, 100)
+    rbch := make(chan []*mat64.Dense, 100)
+    rwch := make(chan []*mat64.Dense, 100)
     go func(){
         for _, it  := range mini_batch { itch <- it }
         close(itch)
     }()
-    for w := 0; w < 4; w++ {
+    thrd := 3
+    wg1.Add(thrd)
+    wg2.Add(2)
+    for w := 0; w < thrd; w++ {
         go func() {
             for it := range itch {
                 delta_nabla_b, delta_nabla_w := nw.backprop(it)
-                rtch <- [][]*mat64.Dense{delta_nabla_b, delta_nabla_w}
+                //rtch <- [][]*mat64.Dense{delta_nabla_b, delta_nabla_w}
+                rbth <- delta_nabla_b
+                rwth <- delta_nabla_w
             }
+            wg1.Done()
         }()
     }
-    for i := 0; i < lm; i++ {
-        dat := <-rtch
-        delta_nabla_b, delta_nabla_w := dat[0], dat[1]
-        nabla_b = nw.mb_add(nabla_b, delta_nabla_b)
-        nabla_w = nw.mb_add(nabla_w, delta_nabla_w)
-    }
+    go func() {
+        for delta_nabla_b := range rbch {
+            nabla_b = nw.mb_add(nabla_b, delta_nabla_b)
+        }
+        wg2.Done()
+    }()
+    go func() {
+        for delta_nabla_w := range rwch {
+            nabla_w = nw.mb_add(nabla_w, delta_nabla_w)
+        }
+        wg2.Done()
+    }()
+    wg1.Wait()
+    close(rbch)
+    close(rwch)
+    wg2.Wait()
 
     p := eta / float64(lm)
     nw.weights = nw.mb_cal(p, nw.weights, nabla_w)
