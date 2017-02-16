@@ -10,3 +10,7 @@ https://github.com/gonum/
 https://docs.scipy.org/doc/numpy/reference/index.html
 
 https://github.com/xianyi/OpenBLAS
+
+http://deeplearning.net/software/theano/
+
+https://www.tensorflow.org/
