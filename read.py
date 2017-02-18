@@ -80,9 +80,7 @@ class Network(object):
             zs.append(z)
             activation = sigmoid(z)
             activations.append(activation)
-        #print "activations:"
         #print activations
-        #print "activations"
         delta = self.cost_derivative(activations[-1], y) * \
             sigmoid_prime(zs[-1])
         #print delta
