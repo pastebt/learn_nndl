@@ -23,8 +23,8 @@ func NewNetwork(sizes []int) *Network {
     for i := 0; i < nw.num_layers - 1; i++ {
         y := nw.sizes[i + 1]
         x := nw.sizes[i]
-        nw.biases[i] = randyx(y, 1)
-        nw.weights[i] = randyx(y, x)
+        nw.biases[i] = randyx(y, 1, 1)
+        nw.weights[i] = randyx(y, x, 1)
     }
     return nw
 }

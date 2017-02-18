@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "math"
 //    "sync"
 //    "github.com/gonum/floats"
     "github.com/gonum/matrix/mat64"
@@ -48,11 +49,14 @@ func NewNetwork2(sizes []int) *Network2 {
     nw := &Network2{num_layers: len(sizes), sizes: sizes}
     nw.biases = make([]*mat64.Dense, nw.num_layers - 1)
     nw.weights = make([]*mat64.Dense, nw.num_layers - 1)
+    var d float64
+    d = 1.0
     for i := 0; i < nw.num_layers - 1; i++ {
         y := nw.sizes[i + 1]
         x := nw.sizes[i]
-        nw.biases[i] = randyx(y, 1)
-        nw.weights[i] = randyx(y, x)
+        d = math.Sqrt(float64(x))
+        nw.biases[i] = randyx(y, 1, 1)
+        nw.weights[i] = randyx(y, x, d)
     }
     return nw
 }
@@ -66,7 +70,7 @@ func (nw *Network2)feedforward(a *mat64.Dense) *mat64.Dense{
 }
 
 func (nw *Network2)SGD(training_data []*ITEM, epochs, mini_batch_size int,
-                      eta float64, test_data []*ITEM) {
+                      eta, lmbda float64, test_data []*ITEM) {
     for j := 0; j < epochs; j++ {
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {

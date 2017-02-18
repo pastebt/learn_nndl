@@ -107,12 +107,12 @@ func sigmoid_prime(z *mat64.Dense) *mat64.Dense {
 }
 
 
-func randyx(y, x int) *mat64.Dense {
+func randyx(y, x int, d float64) *mat64.Dense {
     z := x * y
     dat := make([]float64, z)
     for i := 0; i < z; i++ {
         //dat[i] = rand.Float64() * 2.0 - 1.0
-        dat[i] = rand.NormFloat64()
+        dat[i] = rand.NormFloat64() / d
     }
     return mat64.NewDense(y, x, dat)
 }
