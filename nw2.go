@@ -74,7 +74,8 @@ func (nw *Network2)SGD(training_data []*ITEM, epochs, mini_batch_size int,
     for j := 0; j < epochs; j++ {
         shuffle(training_data)
         for k :=0; k < len(training_data); k = k + mini_batch_size {
-            nw.update_mini_batch(training_data[k:k+mini_batch_size], eta)
+            nw.update_mini_batch(training_data[k:k+mini_batch_size], eta,
+                                 lmbda / float64(len(training_data)))
         }
         if test_data != nil {
             fmt.Printf("Epoch %02d: %d / %d\n",
@@ -94,14 +95,14 @@ func (nw *Network2)mb_add(ns, dn []*mat64.Dense) []*mat64.Dense {
     return z
 }
 
-func (nw *Network2)mb_cal(p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
+func (nw *Network2)mb_cal(q, p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
     z := make([]*mat64.Dense, len(ns))
     for i := range dn {
         m := mat64.DenseCopyOf(ns[i])
         fs := m.RawMatrix().Data
         ds := dn[i].RawMatrix().Data
         for j, f := range fs {
-            fs[j] = f - p * ds[j]
+            fs[j] = q * f - p * ds[j]
         }
         z[i] = m
     }
@@ -109,7 +110,7 @@ func (nw *Network2)mb_cal(p float64, ns, dn []*mat64.Dense) []*mat64.Dense {
 }
 
 
-func (nw *Network2)update_mini_batch(mini_batch []*ITEM, eta float64) {
+func (nw *Network2)update_mini_batch(mini_batch []*ITEM, eta, lmnda_n float64) {
     nabla_b := zeros(nw.biases)
     nabla_w := zeros(nw.weights)
     for _, it  := range mini_batch {
@@ -118,8 +119,9 @@ func (nw *Network2)update_mini_batch(mini_batch []*ITEM, eta float64) {
         nabla_w = nw.mb_add(nabla_w, delta_nabla_w)
     }
     p := eta / float64(len(mini_batch))
-    nw.weights = nw.mb_cal(p, nw.weights, nabla_w)
-    nw.biases = nw.mb_cal(p, nw.biases, nabla_b)
+    q := 1 - eta * lmnda_n  //1-eta*(lmbda/n)
+    nw.weights = nw.mb_cal(q, p, nw.weights, nabla_w)
+    nw.biases = nw.mb_cal(1, p, nw.biases, nabla_b)
 }
 
 
@@ -140,9 +142,12 @@ func (nw *Network2)backprop(it *ITEM) (nabla_b, nabla_w []*mat64.Dense) {
         activations = append(activations, activation)
     }
     // backward pass
-    delta := mat64.NewDense(0, 0, nil)
-    delta.MulElem(nw.cost_derivative(activations[len(activations) - 1], it.yv),
-                  sigmoid_prime(zs[len(zs) - 1]))
+    //delta := mat64.NewDense(0, 0, nil)
+    //delta.MulElem(nw.cost_derivative(activations[len(activations) - 1], it.yv),
+    //              sigmoid_prime(zs[len(zs) - 1]))
+    cost := new(CrossEntropyCost)
+    delta := cost.delta(zs[len(zs) - 1], activations[len(activations) - 1], it.yv)
+
     nabla_b[len(nabla_b) - 1] = delta
     nabla_w[len(nabla_w) - 1] = npdot(delta, activations[len(activations) - 2].T())
     for l := 2; l < nw.num_layers; l++ {
@@ -165,8 +170,10 @@ func (nw *Network2)evaluate(test_data []*ITEM) int {
     return eq
 }
 
+/*
 func (nw *Network2)cost_derivative(output_activations, y *mat64.Dense) *mat64.Dense{
     m := mat64.NewDense(0, 0, nil)
     m.Sub(output_activations, y)
     return m
 }
+*/
